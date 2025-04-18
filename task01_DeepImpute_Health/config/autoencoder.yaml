@@ -8,8 +8,8 @@ parameters:     # 실험할 하이퍼파라미터
   lr:
     values: [0.001, 0.0005, 0.0001]
   epochs:
-    values: [10, 20, 30, 40, 50]
+    values: [10, 20, 30, 40, 50]      # 30~50
   batch_size:
     values: [32, 64, 128]
   optimizer:
-    values: ["Adam", "SGD"]
+    values: ["Adam", "SGD"]           # SGD 단순 경사하강법이라 학습이 잘 안돼는 것 같음
