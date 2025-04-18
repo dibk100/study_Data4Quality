@@ -1,0 +1,15 @@
+method: grid  # grid(모든 조합), random, bayes 중 선택
+
+metric:       # 오토인코더로는 결측치 복원인거라 y-y^ 차이값이 작기만하면 좋음
+  name: train_loss
+  goal: minimize
+
+parameters:     # 실험할 하이퍼파라미터
+  lr:
+    values: [0.001, 0.0005, 0.0001]
+  epochs:
+    values: [10, 20, 30, 40, 50]
+  batch_size:
+    values: [32, 64, 128]
+  optimizer:
+    values: ["Adam", "SGD"]
