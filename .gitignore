@@ -6,6 +6,8 @@
 *.pt
 *.zip
 *.csv
+*/wandb
+*.pth
 
 ### Linux ###
 *~

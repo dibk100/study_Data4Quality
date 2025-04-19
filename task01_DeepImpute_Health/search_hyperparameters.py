@@ -1,4 +1,4 @@
-from impute_model import Autoencoder
+from impute_model import *
 from utils import *
 import wandb
 import torch
@@ -7,15 +7,16 @@ def sweep_train(input_dim, train_loader):
     """
     Sweep 실험을 실행하는 함수
     """
-    wandb.init(tags=["autoencoder"])
+    wandb.init(tags=["Noise_autoencoder"])
     batch_size = wandb.config.batch_size
+    noise_level = wandb.config.noise_level
     
     # 학습데이터를 train, val로 자르기, batch size고려해서 작성
     train_x, val_x = dataset_split(train_loader)
     train_loader, val_loader  = loader_dataset(train_x,val_x,batch_size)
     
     # 모델 생성
-    model = Autoencoder(input_dim=input_dim)
+    model = DenoisingAutoencoder(input_dim=input_dim,noise_factor=noise_level)
     # 모델 학습
     model.model_train_wandb(train_loader,val_loader)
     wandb.finish()  # 실험이 끝났음을 알리기 위해 wandb.finish() 호출
@@ -37,8 +38,8 @@ def run():
     train_X, test_X = dataset_split(features_scaled)                # test_X은 고정해야함. random_state=42
     
     # sweep 실험할 수 있게 설정
-    sweep_config = load_yqml('autoencoder')
-    sweep_id = wandb.sweep(sweep_config, project="Data4Quality_task01_impute")
+    sweep_config = load_yqml('dae')
+    sweep_id = wandb.sweep(sweep_config, project="Data4Quality_task01_DAE")
     wandb.agent(sweep_id, function=lambda: sweep_train(rows, train_X))
     
 if __name__ == "__main__":
