@@ -6,6 +6,62 @@ from utils import *
 import time
 from torch.utils.data import TensorDataset, DataLoader
 
+class AgeRegressor(nn.Module):
+    def __init__(self, input_dim):
+        super(AgeRegressor, self).__init__()
+        
+        # 모델 구조
+        self.dense1 = nn.Linear(input_dim, 128)
+        self.dropout1 = nn.Dropout(0.3)
+        self.dense2 = nn.Linear(128, 64)
+        self.dropout2 = nn.Dropout(0.2)
+        self.output = nn.Linear(64, 1)  # 출력은 하나의 값
+        
+    def forward(self, x):
+        x = torch.relu(self.dense1(x))
+        x = self.dropout1(x)
+        x = torch.relu(self.dense2(x))
+        x = self.dropout2(x)
+        
+        output = self.output(x)  # 선형 회귀 출력
+        return output
+    
+    def model_train(self, X_train, y_train, num_epochs=20, batch_size=32, learning_rate=0.001):
+        # 학습기 설정
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.to(device)  # 모델을 GPU로 전송
+
+        # 데이터 텐서 변환
+        X_tensor = torch.tensor(X_train, dtype=torch.float32).to(device)
+        y_tensor = torch.tensor(y_train, dtype=torch.float32).to(device)
+
+        # 데이터로더 설정
+        dataset = torch.utils.data.TensorDataset(X_tensor, y_tensor)
+        train_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+        # 손실 함수 및 옵티마이저 설정
+        criterion = nn.MSELoss()  # 회귀 문제이므로 MSE 손실 함수
+        optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
+
+        # 학습 루프
+        for epoch in range(num_epochs):
+            for inputs, targets in train_loader:
+                optimizer.zero_grad()  # 기울기 초기화
+                
+                # 모델 예측
+                outputs = self(inputs)
+                
+                # 손실 계산
+                loss = criterion(outputs, targets)
+                
+                # 역전파 및 최적화
+                loss.backward()
+                optimizer.step()
+
+            if epoch%10==0 :
+                print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}")
+        print("Training completed!")
+
 class SingleLabelClassifier(nn.Module):
     def __init__(self, input_dim):
         super(SingleLabelClassifier, self).__init__()
