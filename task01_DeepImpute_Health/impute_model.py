@@ -1,9 +1,147 @@
 import torch
 import torch.nn as nn
+import torch.optim as optim
 import wandb
 from utils import *
 import time
+from torch.utils.data import TensorDataset, DataLoader
 
+class SingleLabelClassifier(nn.Module):
+    def __init__(self, input_dim):
+        super(SingleLabelClassifier, self).__init__()
+        
+        self.dense1 = nn.Linear(input_dim, 128)
+        self.dropout1 = nn.Dropout(0.3)
+        self.dense2 = nn.Linear(128, 64)
+        self.dropout2 = nn.Dropout(0.2)
+
+        # 출력층 하나만!
+        self.output = nn.Linear(64, 1)
+    
+    def forward(self, x):
+        x = torch.relu(self.dense1(x))
+        x = self.dropout1(x)
+        x = torch.relu(self.dense2(x))
+        x = self.dropout2(x)
+        
+        output = torch.sigmoid(self.output(x))  # sigmoid 적용
+        return output
+    
+    def model_train_fixed_hyperparameter(self, X_train, y_train):
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'     # gpu 
+        if device!='cuda':
+            raise RuntimeError("CUDA device not available. Please check if a GPU is available.")
+
+        # 데이터 준비
+        X_tensor = torch.tensor(X_train, dtype=torch.float32)
+        y_tensor = torch.tensor(y_train, dtype=torch.float32)
+        
+        if y_tensor.dim() == 1:
+            y_tensor = y_tensor.unsqueeze(1)
+
+        train_dataset = TensorDataset(X_tensor, y_tensor)
+        train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+        
+        ####################### SETTING #######################
+        self.to(device)                                             # 모델을 gpu에 올리기
+        self.train()                                                # 학습모드on
+        
+        criterion = nn.BCELoss()
+        optimizer = torch.optim.Adam(self.parameters(), lr=0.001)
+        num_epochs = 20
+        
+        # 학습 루프
+        for epoch in range(num_epochs):
+            for inputs, targets in train_loader:
+                inputs = inputs.to(device)
+                targets = targets.to(device)
+
+                optimizer.zero_grad()
+                outputs = self(inputs)
+                loss = criterion(outputs, targets)
+
+                loss.backward()
+                optimizer.step()
+
+            print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}")
+        return
+    
+class MultiLabelClassifier(nn.Module):
+    def __init__(self, input_dim):
+        super(MultiLabelClassifier, self).__init__()
+        
+        # 모델 레이어 정의
+        self.dense1 = nn.Linear(input_dim, 128)
+        self.dropout1 = nn.Dropout(0.3)
+        self.dense2 = nn.Linear(128, 64)
+        self.dropout2 = nn.Dropout(0.2)
+        
+        ################################# 두 개의 출력층 (sigmoid)  ####
+        self.output_dm = nn.Linear(64, 1)
+        self.output_ht = nn.Linear(64, 1)
+    
+    def forward(self, x):
+        # 순차적으로 레이어를 호출
+        x = torch.relu(self.dense1(x))
+        x = self.dropout1(x)
+        x = torch.relu(self.dense2(x))
+        x = self.dropout2(x)
+        
+        # 두 개의 출력
+        output_dm = torch.sigmoid(self.output_dm(x))
+        output_ht = torch.sigmoid(self.output_ht(x))
+        
+        return output_dm, output_ht
+    
+    def model_train_fixed_hyperparameter(self,X_train,y_dm_train,y_ht_train):
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'     # gpu 
+        if device!='cuda':
+            raise RuntimeError("CUDA device not available. Please check if a GPU is available.")
+
+        # 데이터 준비
+        X_tensor = torch.tensor(X_train, dtype=torch.float32)
+        y_dm_tensor = torch.tensor(y_dm_train, dtype=torch.float32).unsqueeze(1)  # shape: (N, 1)
+        y_ht_tensor = torch.tensor(y_ht_train, dtype=torch.float32).unsqueeze(1)
+
+        train_dataset = TensorDataset(X_tensor, y_dm_tensor, y_ht_tensor)
+        train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+
+        ####################### SETTING #######################
+        self.to(device)                                             # 모델을 gpu에 올리기
+        self.train()                                                # 학습모드on
+        
+        criterion = nn.BCELoss()
+        optimizer = torch.optim.Adam(self.parameters(), lr=0.001)
+        num_epochs = 20
+        
+        # 학습 루프
+        for epoch in range(num_epochs):
+            for inputs, y_dm, y_ht in train_loader:
+                inputs = inputs.to(device)
+                y_dm = y_dm.to(device)
+                y_ht = y_ht.to(device)
+                
+                # 기울기 초기화
+                optimizer.zero_grad()
+
+                # 모델 예측
+                output_dm, output_ht = self(inputs)
+
+                # 손실 계산
+                loss_dm = criterion(output_dm, y_dm)
+                loss_ht = criterion(output_ht, y_ht)
+                loss = loss_dm + loss_ht  # 두 출력의 손실 합산
+
+                # 역전파
+                loss.backward()
+
+                # 최적화
+                optimizer.step()
+
+            # 에폭마다 손실 출력
+            print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}")
+        return
+        
 class GaussianNoise(nn.Module):
     """
     # GaussianNoise: 입력 데이터에 임의의 노이즈를 추가하여 모델이 결측치를 잘 복원하도록 유도
@@ -212,8 +350,8 @@ class DenoisingAutoencoder(nn.Module):
                     val_loss += loss.item()
 
             # 매 epoch마다 검증 데이터로 손실 기록
+            wandb.log({"val_loss": val_loss})
             print(f"Epoch {epoch+1}/{config.epochs} - Validation Loss: {val_loss:.4f}")
-            
             ####################### step02 : END #######################
             self.train()          # step01 : 학습모드 on
         

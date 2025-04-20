@@ -3,7 +3,8 @@ import yaml
 import torch
 from sklearn.model_selection import train_test_split
 import pandas as pd
-
+from sklearn.preprocessing import StandardScaler
+    
 def load_yqml(yaml_f):
     """
     config 파일을 wandb가 읽을 수 있게 변환
@@ -56,8 +57,11 @@ def data_processing():
     
     # 임시 결측치 대체 (컬럼 평균으로)
     features_filled = features.fillna(features.mean())
+
+    scaler = StandardScaler()
+    features_scaled = scaler.fit_transform(features_filled)
     
-    return features,features_filled,mask
+    return features_scaled, mask
 
 def replace_missing_values(features_scaled,mask,predicted_values,scaler):
     """
