@@ -13,3 +13,15 @@ COVID-19 및 폐렴 데이터를 활용하여 분류기를 구축하고 성능�
 ### 03. **Open Question**
 - **문제점 분석**: 데이터와 모델 문제점 분석 및 해결 방안 제시.
 - **개선 방안**: 제안한 개선 방안 적용 후 성능 개선 결과 도출.
+
+## 📁 CovidClassifier_Analysis 🦠📊
+```
+Assignment02_CovidClassifier/
+├── Q1Q2_analysis.ipynb            # **과제 코드 파일**
+├── README.md                      
+├── main.py                       
+├── models.py                      
+├── models_sketch.py                
+├── train_eval.py                 
+└── utils.py                 
+```
