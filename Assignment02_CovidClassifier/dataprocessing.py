@@ -98,14 +98,48 @@ def get_transform(img_size=(224, 224)):
         transforms.Normalize([0.5]*3, [0.5]*3)
     ])
 
-def get_datasets(data_dir, transform):
-    train_dataset = datasets.ImageFolder(os.path.join(data_dir, "train"), transform=transform)
-    val_dataset = datasets.ImageFolder(os.path.join(data_dir, "val"), transform=transform)
-    test_dataset = datasets.ImageFolder(os.path.join(data_dir, "test"), transform=transform)
-    return train_dataset, val_dataset, test_dataset
+# def get_datasets(data_dir, transform):
+#     train_dataset = datasets.ImageFolder(os.path.join(data_dir, "train"), transform=transform)
+#     val_dataset = datasets.ImageFolder(os.path.join(data_dir, "val"), transform=transform)
+#     test_dataset = datasets.ImageFolder(os.path.join(data_dir, "test"), transform=transform)
+#     return train_dataset, val_dataset, test_dataset
 
-def get_dataloaders(train_dataset, val_dataset, test_dataset, batch_size=32):
+def get_dataloaders(train_dataset, val_dataset, test_dataset, batch_size):
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     return train_loader, val_loader, test_loader
+
+def get_customdatasets(data_dir, transform, target_classes=None):
+    def filter_dataset(dataset, class_to_idx, target_classes):
+        # 선택된 클래스만 샘플로 유지
+        if target_classes is None:
+            return dataset
+
+        # 선택된 클래스 인덱스
+        target_class_indices = [class_to_idx[cls_name] for cls_name in target_classes]
+        
+        # samples와 targets 필터링
+        filtered_samples = [(path, label) for path, label in dataset.samples if label in target_class_indices]
+        dataset.samples = filtered_samples
+        dataset.targets = [label for _, label in filtered_samples]
+
+        # 라벨을 0, 1로 다시 매핑
+        label_map = {class_to_idx[cls_name]: i for i, cls_name in enumerate(target_classes)}
+        dataset.targets = [label_map[label] for label in dataset.targets]
+        dataset.samples = [(path, label_map[label]) for path, label in dataset.samples]
+        
+        return dataset
+
+    # ImageFolder 로딩
+    train_dataset = datasets.ImageFolder(os.path.join(data_dir, "train"), transform=transform)
+    val_dataset = datasets.ImageFolder(os.path.join(data_dir, "val"), transform=transform)
+    test_dataset = datasets.ImageFolder(os.path.join(data_dir, "test"), transform=transform)
+
+    # 클래스 필터링
+    if target_classes is not None:
+        train_dataset = filter_dataset(train_dataset, train_dataset.class_to_idx, target_classes)
+        val_dataset = filter_dataset(val_dataset, val_dataset.class_to_idx, target_classes)
+        test_dataset = filter_dataset(test_dataset, test_dataset.class_to_idx, target_classes)
+
+    return train_dataset, val_dataset, test_dataset
