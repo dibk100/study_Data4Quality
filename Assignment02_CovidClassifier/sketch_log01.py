@@ -1,5 +1,5 @@
 ######################################## setting 
-from dataprocessing import *
+from study_Data4Quality.Assignment02_CovidClassifier.utils import *
 import torch
 from torch.utils.data import DataLoader, WeightedRandomSampler
 
