@@ -8,6 +8,8 @@
 *.csv
 */wandb
 *.pth
+COVID19_1K/
+Xray_image/
 
 ### Linux ###
 *~
